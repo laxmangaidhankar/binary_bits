@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrashMate — Logistics Command Center</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TOP NAV */
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 16px; }
+    .topbar-logo { font-size: 22px; font-weight: 800; color: #2d6a2d; }
+    .topbar-tagline { font-size: 11px; color: #666; max-width: 280px; line-height: 1.4; }
+    .topbar-title { font-size: 22px; font-weight: 700; color: #111; }
+
+    /* MAIN GRID */
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 200px 1fr 220px 220px;
+      grid-template-rows: 1fr auto;
+      gap: 10px;
+      padding: 12px 16px;
+    }
+
+    /* PANEL BASE */
+    .panel {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e0e0e0;
+      padding: 12px;
+      overflow: hidden;
+    }
+    .panel-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 10px;
+    }
+
+    /* LEFT: API METRICS */
+    .metrics-panel { display: flex; flex-direction: column; gap: 0; }
+    .metric-block {
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .metric-block:last-child { border-bottom: none; }
+    .metric-label { font-size: 11px; color: #666; margin-bottom: 2px; }
+    .metric-value { font-size: 26px; font-weight: 800; color: #111; line-height: 1.1; }
+    .metric-sub { font-size: 10px; color: #999; margin-top: 2px; }
+    .sparkline {
+      width: 100%;
+      height: 28px;
+      margin-top: 4px;
+    }
+
+    /* ALERT BOX */
+    .alert-box {
+      background: #e8a000;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 8px;
+      font-size: 10px;
+      color: #fff;
+      line-height: 1.5;
+    }
+    .alert-box strong { font-size: 11px; display: block; margin-bottom: 4px; }
+
+    /* CENTER: MAP */
+    .map-panel {
+      position: relative;
+      padding: 0;
+      overflow: hidden;
+      grid-row: 1;
+    }
+    .map-badges {
+      position: absolute;
+      top: 10px; left: 10px; right: 10px;
+      display: flex;
+      justify-content: space-between;
+      z-index: 10;
+    }
+    .map-badge {
+      background: rgba(255,255,255,0.92);
+      border-radius: 20px;
+      padding: 5px 10px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .map-canvas {
+      width: 100%;
+      height: 100%;
+      min-height: 380px;
+      background: #e8ede0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Road-like SVG map */
+    .map-svg { position: absolute; top:0; left:0; width:100%; height:100%; }
+
+    .map-node { position: absolute; }
+    .hex-node {
+      width: 18px; height: 18px;
+      background: #00cc66;
+      clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+      box-shadow: 0 0 14px #00ff88;
+      animation: hpulse 1.8s infinite;
+    }
+    .hex-large {
+      width: 26px; height: 26px;
+      background: #00aa44;
+      clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+      box-shadow: 0 0 20px #00ff88;
+      animation: hpulse 1.2s infinite;
+    }
+    .dot-node {
+      width: 8px; height: 8px;
+      background: #00ff88;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #00ff88;
+      animation: hpulse 2s infinite;
+    }
+    .orange-glow {
+      width: 50px; height: 50px;
+      background: radial-gradient(circle, rgba(255,140,0,0.55) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: oglow 2.5s infinite;
+    }
+    @keyframes hpulse {
+      0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.25)}
+    }
+    @keyframes oglow {
+      0%,100%{opacity:0.7;transform:scale(1)} 50%{opacity:1;transform:scale(1.3)}
+    }
+
+    .city-lbl {
+      position: absolute;
+      font-size: 13px;
+      font-weight: 600;
+      color: #222;
+      text-shadow: 0 1px 3px rgba(255,255,255,0.8);
+    }
+
+    /* Dijkstra flow diagram overlay */
+    .flow-overlay {
+      position: absolute;
+      left: 10px;
+      top: 80px;
+      background: rgba(255,255,255,0.92);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 9px;
+      color: #333;
+      line-height: 1.7;
+      border: 1px solid #ddd;
+      min-width: 160px;
+    }
+    .flow-title { font-weight: 700; font-size: 9px; color: #2d6a2d; margin-bottom: 4px; }
+    .flow-row { display: flex; align-items: center; gap: 6px; }
+    .flow-box {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 8px;
+      white-space: nowrap;
+    }
+    .flow-arrow { color: #2d6a2d; font-size: 10px; }
+
+    .map-footer {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 14px;
+      font-size: 10px;
+      color: #555;
+      border-top: 1px solid #ddd;
+    }
+    .map-footer-badge {
+      display: flex; align-items: center; gap: 5px; font-weight: 600;
+    }
+
+    /* API ROUTING PANEL */
+    .routing-panel { display: flex; flex-direction: column; gap: 10px; }
+    .network-status {
+      font-size: 12px;
+      color: #333;
+    }
+    .status-green {
+      color: #00aa44;
+      font-weight: 700;
+    }
+    .region-select {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 11px;
+      color: #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    /* API ENDPOINT CONSOLE */
+    .console-box {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 9px;
+      color: #00ff88;
+      margin-top: 4px;
+      line-height: 1.6;
+      max-height: 80px;
+      overflow: hidden;
+    }
+    .console-path { color: #7ec8e3; font-weight: 700; margin-bottom: 2px; }
+    .console-key { color: #ff9966; }
+    .console-val { color: #fff; }
+
+    /* QR LIFECYCLE */
+    .qr-panel { overflow-y: auto; max-height: 420px; }
+    .qr-item {
+      border-left: 3px solid #00cc66;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+      background: #f9fdf9;
+      border-radius: 0 6px 6px 0;
+      font-size: 9.5px;
+      color: #333;
+      line-height: 1.5;
+    }
+    .qr-item .qr-id { font-weight: 700; color: #2d6a2d; }
+    .qr-item .qr-status { color: #00aa44; font-weight: 600; }
+
+    /* BOTTOM NAV */
+    .bottom-nav {
+      background: #fff;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      padding: 8px 0 10px;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #888;
+      cursor: pointer;
+      padding: 4px 28px;
+      border-right: 1px solid #eee;
+    }
+    .nav-item:last-child { border-right: none; }
+    .nav-item.active { color: #2d6a2d; }
+    .nav-icon-wrap {
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+    }
+    .nav-item.active .nav-icon-wrap {
+      background: #2d6a2d; color: #fff;
+    }
+
+    /* FOOTER TAGLINE */
+    .footer-tagline {
+      text-align: center;
+      font-size: 12px;
+      color: #555;
+      padding: 10px 16px 14px;
+      font-style: italic;
+    }
+    .page-nav {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      z-index: 100;
+      display: flex;
+      gap: 8px;
+    }
+    .page-nav a {
+      background: #2d6a2d;
+      color: #fff;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: background 0.2s;
+    }
+    .page-nav a:hover { background: #1e4d1e; }
+    .page-nav a.current { background: #555; cursor: default; }
+  </style>
+</head>
+<body>
+
+<div class="page-nav">
+  <a href="index.html">Page 1: Home</a>
+  <a href="page2.html" class="current">Page 2: Command Center</a>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">TrashMate</div>
+    <div class="topbar-tagline">"The world's first AI-powered Waste-as-a-Resource Supply every discarded item becomes a tracked, optimized, and valued asset."</div>
+  </div>
+  <div class="topbar-title">Logistics &nbsp; Command Center API Portal</div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main">
+
+  <!-- COL 1: METRICS -->
+  <div class="panel metrics-panel">
+    <div class="panel-title">Active API Metrics</div>
+
+    <div class="metric-block">
+      <div class="metric-label">Current API Call Rate</div>
+      <div class="metric-value">1,240.5/sec</div>
+      <div class="metric-sub">(Live Updating)</div>
+      <svg class="sparkline" viewBox="0 0 180 28" preserveAspectRatio="none">
+        <polyline points="0,22 20,18 40,20 60,12 80,15 100,8 120,11 140,6 160,9 180,4"
+          fill="none" stroke="#00cc66" stroke-width="2"/>
+      </svg>
+    </div>
+
+    <div class="metric-block">
+      <div class="metric-label">Active Agent Status</div>
+      <div class="metric-value">4,821</div>
+      <div class="metric-sub">Agents Online</div>
+      <svg class="sparkline" viewBox="0 0 180 28" preserveAspectRatio="none">
+        <polyline points="0,20 20,16 40,18 60,10 80,14 100,7 120,12 140,5 160,8 180,3"
+          fill="none" stroke="#00cc66" stroke-width="2"/>
+      </svg>
+    </div>
+
+    <div class="metric-block">
+      <div class="metric-label">Processing Hub Tonnage</div>
+      <div class="metric-value">1,240.5t</div>
+      <div class="metric-sub">(Live Stream)</div>
+      <svg class="sparkline" viewBox="0 0 180 28" preserveAspectRatio="none">
+        <polyline points="0,24 20,20 40,22 60,14 80,17 100,10 120,13 140,7 160,10 180,5"
+          fill="none" stroke="#00cc66" stroke-width="2"/>
+      </svg>
+    </div>
+
+    <div class="alert-box">
+      <strong>⚠ PRE-EMPTIVE ALERT Feed (Layer 2)</strong>
+      [Hub Sector 7] Overload Predicted in 42 mins. Auto-rerouting to Hub B.<br><br>
+      [Agent 1055] Dynamic Route assigned due to traffic spike
+    </div>
+  </div>
+
+  <!-- COL 2: MAP -->
+  <div class="panel map-panel">
+    <div class="map-badges">
+      <div class="map-badge">📍 Google Maps Platform</div>
+      <div class="map-badge">✦ Google Routes API</div>
+    </div>
+
+    <div class="map-canvas">
+      <!-- Road network SVG -->
+      <svg class="map-svg" viewBox="0 0 560 400" preserveAspectRatio="none">
+        <!-- Road-like paths -->
+        <g fill="none" stroke="#c8d4b8" stroke-width="6" opacity="0.7">
+          <path d="M0,200 Q140,180 280,200 Q420,220 560,200"/>
+          <path d="M280,0 Q260,100 280,200 Q300,300 280,400"/>
+          <path d="M0,100 Q200,120 280,200 Q360,280 560,300"/>
+          <path d="M0,300 Q180,280 280,200 Q380,120 560,100"/>
+          <path d="M100,0 Q150,150 280,200 Q350,230 400,400"/>
+          <path d="M460,0 Q400,150 280,200 Q200,240 160,400"/>
+        </g>
+        <!-- Network lines -->
+        <g stroke="#1a5c3a" stroke-width="1" opacity="0.5">
+          <line x1="280" y1="200" x2="160" y2="100"/>
+          <line x1="280" y1="200" x2="380" y2="120"/>
+          <line x1="280" y1="200" x2="200" y2="300"/>
+          <line x1="280" y1="200" x2="400" y2="280"/>
+          <line x1="160" y1="100" x2="100" y2="60"/>
+          <line x1="380" y1="120" x2="460" y2="80"/>
+          <line x1="200" y1="300" x2="140" y2="340"/>
+          <line x1="400" y1="280" x2="460" y2="320"/>
+          <line x1="280" y1="200" x2="280" y2="80"/>
+          <line x1="280" y1="200" x2="280" y2="340"/>
+        </g>
+      </svg>
+
+      <!-- Orange glows -->
+      <div class="map-node orange-glow" style="left:255px;top:60px"></div>
+      <div class="map-node orange-glow" style="left:370px;top:100px"></div>
+
+      <!-- Large hex hubs -->
+      <div class="map-node"><div class="hex-large" style="position:relative"></div></div>
+      <div style="position:absolute;left:267px;top:187px"><div class="hex-large"></div></div>
+      <div style="position:absolute;left:147px;top:87px"><div class="hex-node"></div></div>
+      <div style="position:absolute;left:367px;top:107px"><div class="hex-node"></div></div>
+      <div style="position:absolute;left:187px;top:287px"><div class="hex-node"></div></div>
+      <div style="position:absolute;left:387px;top:267px"><div class="hex-node"></div></div>
+      <div style="position:absolute;left:267px;top:67px"><div class="hex-node"></div></div>
+
+      <!-- Dot agents -->
+      <div style="position:absolute;left:87px;top:47px"><div class="dot-node"></div></div>
+      <div style="position:absolute;left:447px;top:67px"><div class="dot-node"></div></div>
+      <div style="position:absolute;left:127px;top:327px"><div class="dot-node"></div></div>
+      <div style="position:absolute;left:447px;top:307px"><div class="dot-node"></div></div>
+      <div style="position:absolute;left:60px;top:187px"><div class="dot-node"></div></div>
+      <div style="position:absolute;left:487px;top:187px"><div class="dot-node"></div></div>
+      <div style="position:absolute;left:267px;top:327px"><div class="dot-node"></div></div>
+      <div style="position:absolute;left:207px;top:147px"><div class="dot-node"></div></div>
+      <div style="position:absolute;left:337px;top:247px"><div class="dot-node"></div></div>
+
+      <!-- City label -->
+      <div class="city-lbl" style="left:240px;top:210px">Pune</div>
+
+      <!-- Dijkstra flow overlay -->
+      <div class="flow-overlay">
+        <div class="flow-title">Dijkstra / A* graph optimized — 6 agents</div>
+        <div class="flow-row">
+          <div class="flow-box">Sector agent 1</div>
+          <div class="flow-arrow">→</div>
+          <div style="font-size:8px;color:#666">45 min &nbsp; Tonne</div>
+        </div>
+        <div style="font-size:8px;color:#666;margin:2px 0 2px 4px">Agent ↓</div>
+        <div class="flow-row">
+          <div class="flow-box" style="background:#fff3e0;border-color:#ffcc80">Dijkstra / A*</div>
+          <div class="flow-arrow">→</div>
+          <div style="font-size:8px;color:#666">Time</div>
+        </div>
+        <div style="font-size:8px;color:#666;margin:2px 0 2px 4px">↓ &nbsp; 15 min &nbsp; Tonne</div>
+        <div class="flow-row">
+          <div class="flow-box">Processing 7</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Patiated agent 2</div>
+        </div>
+        <div style="font-size:8px;color:#666;margin:2px 0 2px 4px">↓ &nbsp; min &nbsp; Agents</div>
+        <div class="flow-row">
+          <div class="flow-box" style="background:#e8f5e9;border-color:#66bb6a">Selected agent 8</div>
+          <div style="font-size:8px;color:#666;margin-left:4px">45 min</div>
+        </div>
+      </div>
+
+      <div class="map-footer">
+        <div class="map-footer-badge">🔥 Firebase<br><span style="font-weight:400">Realtime Database</span></div>
+        <div class="map-footer-badge">📊 BigQuery</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COL 3: ROUTING + CONSOLE -->
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <div class="panel routing-panel">
+      <div class="panel-title">API Routing &amp; Traffic Control</div>
+      <div class="network-status">
+        Network Status: <span class="status-green">OPTIMIZED ●</span><br>
+        <span style="font-size:10px;color:#888">(Neon Green Pulse)</span>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#555;margin-bottom:4px;">Global Adaptation Region:</div>
+      <div class="region-select">
+        [Pune, Nairobi, NY, Tokyo] <span>▾</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">API Endpoint Console</div>
+      <div style="font-size:10px;color:#666;margin-bottom:6px;">Select sample endpoints:</div>
+
+      <div class="m t"h</div>
+      <div class="console-boxnsole-key">"name"</span>: <span class="console-val">"pcket"</span>,<br>
+        <span class="console-key">"endpoints"</span>: {<br>
+        &nbsp;<span class="console-key">"collectors"</span>: <span class="console-val">"OPTIMIZED"</span><br>
+        }
+      </div>
+
+      <div class="console-path" style="margin-top:8px;">/coll <div class="console-box">
+        <span class="console-key">"sampe"</span>: <span class="console-val">"Dowstage"</span>,<br>
+        <span class="console-key">"expection"</span>: <span class="console-val">21:30</span>,<br>
+        <span class="console-key">"endponts"</span>: <span class="console-val">"/collectors"</span>
+      </div>
+
+      <div class="console-path" style="margin-top:8px;">/hubs/load/status</div>
+      <div class="c>: <span class="console-val">"hubs"</span>,<br>
+        <span class="console-key">"expectiout"</span>: <span class="console-val">220</span>,<br>
+        <span class="console-key">"cndponts"</span>: <span class="console-val">"stratus"</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- COL 4: QR LIFECYCLE -->
+  <div class="panel qr-panel">
+    <div class="panel-title">QR Lifecycle Monitor<br><span style="font-weight:400iv">
+
+    <!-- QR items -->
+    <div class="qr-item">
+      <div class="qr-id">Unit #TR-992 [Asset]:</div>
+      Picked up (08:12) → Transit →<br>
+      Hub B (A* optimization check)<br>
+      → Recycler B <span class="qr-status">(Verified)</span>
+    </div>
+    <div class="qr-item">
+      <div class="qr-id">Unit #TR-992 [Asset]:</div>
+      Picked up (08:12) → Transit →<br>
+      Hub B (A* optimization check)<br>
+      → Recycler B <span class="qr-status">(Verified)</span>
+    </div>
+    <div class="qr-item">
+      <div class="qr-id">Unit #TR-992 [Asset]:</div>
+      Picked up (08:12) → Transit →<br>
+      Hub B (A* optimization check)<br>
+      → Recycler B <span class="qr-status">(Verified)</span>
+    </div>
+    <div class="qr-item">
+      <div class="qr-id">Unit #TR-992 [Asset]:</div>
+      Picked up (08:12) → Transit →<br>
+      Hub B (A* optimization check)<br>
+      → Recycler B <span class="qr-status">(Verified)</span>
+    </div>
+    <div class="qr-item">
+      <div class="qr-id">Unit #TR-992 [Asset]:</div>
+      Picked up (08:12) → Transit →<br>
+      Hub B (A* optimization check)<br>
+      → Recycler B <span class="qr-status">(Verified)</span>
+    </div>
+    <div class="qr-item">
+      <div class="qr-id">Unit #TR-992 [Asset]:</div>
+      Picked up (08:12) → Transit →<br>
+      Hub B (A* optimization check)<br>
+      → Recycler B <span class="qr-status">(Verified)</span>
+    </div>
+    <div class="qr-item">
+      <div class="qr-id">Unit #TR-992 [Asset]:</div>
+      Picked up (08:12) → Transit →<br>
+      Hub B (A* optimization check)<br>
+      → Recycler B <span class="qr-status">(Verified)</span>
+    </div>
+  </div>
+
+</div><!-- end .main -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active">
+    <div class="nav-icon-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+      </svg>
+    </div>
+    Command Center Portal
+  </div>
+  <div class="nav-item">
+    <div class="nav-icon-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+        <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+      </svg>
+    </div>
+    Logistics API
+  </div>
+  <div class="nav-item">
+    <div class="nav-icon-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+      </svg>
+    </div>
+    Traceability
+  </div>
+  <div class="nav-item">
+    <div class="nav-icon-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+      </svg>
+    </div>
+    Configuration
+  </div>
+</div>
+
+<!-- FOOTER TAGLINE -->
+<div class="footer-tagline">
+  "The world's first AI-powered Waste-as-a-Resource Supply Chain — where every discarded item becomes a optimized, and valued asset."
+</div>
+
+</body>
+</html>

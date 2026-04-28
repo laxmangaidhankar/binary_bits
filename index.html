@@ -331,6 +331,28 @@
       margin: 14px 0;
     }
 
+    .page-nav {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      z-index: 100;
+      display: flex;
+      gap: 8px;
+    }
+    .page-nav a {
+      background: #2d6a2d;
+      color: #fff;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: background 0.2s;
+    }
+    .page-nav a:hover { background: #1e4d1e; }
+    .page-nav a.current { background: #555; cursor: default; }
+
     @media (max-width: 768px) {
       .page { flex-direction: column; align-items: center; }
       .hero { flex: none; text-align: center; }
@@ -340,6 +362,10 @@
   </style>
 </head>
 <body>
+<div class="page-nav">
+  <a href="index.html" class="current">Page 1: Home</a>
+  <a href="page2.html">Page 2: Command Center</a>
+</div>
 <div class="page">
 
   <!-- LEFT HERO -->
