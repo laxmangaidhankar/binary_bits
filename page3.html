@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrashMate — Traceability</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #2a2a2a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* PAGE NAV */
+    .page-nav {
+      position: fixed; top: 14px; right: 16px; z-index: 200;
+      display: flex; gap: 6px;
+    }
+    .page-nav a {
+      background: #2d6a2d; color: #fff; text-decoration: none;
+      font-size: 11px; font-weight: 600; padding: 6px 12px;
+      border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: background 0.2s;
+    }
+    .page-nav a:hover { background: #1e4d1e; }
+    .page-nav a.current { background: #555; cursor: default; }
+
+    /* HEADER */
+    .header {
+      background: #1e1e1e;
+      padding: 20px 28px 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .header-left { flex: 0 0 300px; }
+    .header-logo { font-size: 38px; font-weight: 800; color: #fff; margin-bottom: 10px; }
+    .header-tagline { font-size: 13px; color: #bbb; line-height: 1.6; }
+
+    .header-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding-top: 10px;
+    }
+    .tech-badges {
+      display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: center;
+    }
+    .tech-badge {
+      background: #fff;
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #333;
+      display: flex; align-items: center; gap: 5px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .tech-badge.bq { color: #4285f4; }
+    .tech-badge.looker { color: #00897b; }
+    .tech-badge.gemini { color: #9c27b0; }
+    .tech-badge.maps { color: #e53935; }
+    .header-sub { font-size: 10px; color: #888; margin-top: 2px; }
+
+    .header-right { flex: 0 0 240px; }
+
+    /* QR SEARCH */
+    .qr-search-box {
+      background: #f5f5f5;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .qr-search-title { font-size: 12px; font-weight: 700; color: #222; margin-bottom: 8px; }
+    .qr-input {
+      display: flex; align-items: center; gap: 6px;
+      background: #fff; border: 1px solid #ddd; border-radius: 8px;
+      padding: 7px 10px; font-size: 11px; color: #999;
+    }
+
+    /* TRACEABILITY LOG */
+    .trace-log {
+      background: #f5f5f5;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 8px;
+    }
+    .trace-log-title {
+      font-size: 12px; font-weight: 700; color: #222;
+      display: flex; justify-content: space-between; margin-bottom: 10px;
+    }
+    .trace-step {
+      display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start;
+    }
+    .trace-icon {
+      width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0; margin-top: 1px;
+    }
+    .trace-icon.green { background: #2d6a2d; color: #fff; }
+    .trace-icon.blue  { background: #1565c0; color: #fff; }
+    .trace-icon.orange{ background: #e65100; color: #fff; }
+    .trace-icon.teal  { background: #00695c; color: #fff; }
+    .trace-icon.check { background: #2d6a2d; color: #fff; }
+    .trace-text { font-size: 10px; color: #333; line-height: 1.5; }
+    .trace-text strong { color: #111; font-size: 11px; }
+    .trace-arrow { font-size: 10px; color: #aaa; margin-left: 34px; margin-bottom: 2px; }
+
+    /* MAIN CONTENT */
+    .content {
+      flex: 1;
+      background: #f0f2ee;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
+      text-transform: uppercase; color: #555; margin-bottom: 8px;
+    }
+
+    /* LIFECYCLE FLOW */
+    .lifecycle-area {
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid #e0e0e0;
+      padding: 16px 20px;
+    }
+
+    .flow-stages {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      position: relative;
+      margin-top: 8px;
+    }
+
+    .stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Arrow connector between stages */
+    .stage:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      right: -1px;
+      top: 60px;
+      width: 0; height: 0;
+      border-top: 10px solid transparent;
+      border-bottom: 10px solid transparent;
+      border-left: 12px solid #00cc66;
+      z-index: 5;
+    }
+
+    .stage-visual {
+      width: 100%;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 8px;
+    }
+
+    /* QR scanned badge */
+    .qr-badge {
+      position: absolute;
+      top: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #e8f5e9;
+      border: 1.5px solid #2d6a2d;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 8px;
+      font-weight: 700;
+      color: #2d6a2d;
+      white-space: nowrap;
+      z-index: 2;
+    }
+
+    .stage-emoji {
+      font-size: 44px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    }
+
+    .stage-label-box {
+      width: 100%;
+      border-radius: 8px;
+      padding: 6px 8px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .stage-label-box.s1 { background: #2d6a2d; }
+    .stage-label-box.s2 { background: #2d6a2d; }
+    .stage-label-box.s3 { background: #e65100; }
+    .stage-label-box.s4 { background: #1565c0; }
+    .stage-label-box.s5 { background: #f9a825; color: #333; }
+
+    .stage-details {
+      width: 100%;
+      font-size: 9.5px;
+      color: #444;
+      line-height: 1.7;
+      padding: 0 4px;
+    }
+    .stage-details .check { color: #2d6a2d; font-weight: 600; }
+    .stage-details .dot-o { color: #e65100; font-weight: 600; }
+    .stage-details .dot-b { color: #1565c0; font-weight: 600; }
+    .stage-details .dot-y { color: #f9a825; font-weight: 600; }
+
+    /* Annotation labels on visual */
+    .annot {
+      position: absolute;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-size: 8px;
+      color: #333;
+      line-height: 1.3;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* Recycler hub visual */
+    .recycler-visual {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .recycler-label {
+      font-size: 9px; font-weight: 600; color: #333; text-align: center;
+    }
+
+    /* LIVE STATUS BAR */
+    .live-status {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #555;
+    }
+    .live-dot {
+      width: 8px; height: 8px; background: #00cc66; border-radius: 50%;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .live-status strong { color: #111; }
+    .status-optimized { color: #00aa44; font-weight: 700; }
+    .status-divider { color: #ccc; margin: 0 8px; }
+
+    /* BOTTOM NAV */
+    .bottom-nav {
+      background: #fff;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: center;
+      padding: 8px 0 10px;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      font-size: 10px; color: #888; cursor: pointer;
+      padding: 4px 22px; border-right: 1px solid #eee;
+    }
+    .nav-item:last-child { border-right: none; }
+    .nav-item.active { color: #2d6a2d; }
+    .nav-icon-wrap {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+    }
+    .nav-item.active .nav-icon-wrap { background: #2d6a2d; color: #fff; }
+  </style>
+</head>
+<body>
+
+<div class="page-nav">
+  <a href="index.html">Page 1: Home</a>
+  <a href="page2.html">Page 2: Command Center</a>
+  <a href="page3.html" class="current">Page 3: Traceability</a>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">TrashMate</div>
+    <div class="header-tagline">"The world's first AI-powered Waste-as-a-Resource Supply Chain — where every discarded item becomes a tracked, optimized, and valued asset."</div>
+  </div>
+
+  <div class="header-center">
+    <div class="tech-badges">
+      <div class="tech-badge bq">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#4285f4"><circle cx="12" cy="12" r="10"/></svg>
+        BigQuery
+      </div>
+      <div class="tech-badge looker">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#00897b"><circle cx="12" cy="12" r="10"/></svg>
+        Looker
+      </div>
+      <div class="tech-badge gemini">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#9c27b0"><polygon points="12,2 22,20 2,20"/></svg>
+        Gemini
+      </div>
+      <div class="tech-badge maps">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#e53935"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+        Google Maps
+      </div>
+    </div>
+    <div class="header-sub">Lamb logic and data pouring</div>
+  </div>
+
+  <div class="header-right">
+    <div class="qr-search-box">
+      <div class="qr-search-title">QR Passport ID Search</div>
+      <div class="qr-input">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        Search Asset Passport ID, Hub ID, or Agent ID...
+      </div>
+    </div>
+
+    <div class="trace-log">
+      <div class="trace-log-title">Traceability Log <span>⌄</span></div>
+
+      <div class="trace-step">
+        <div class="trace-icon green">🏠</div>
+        <div class="trace-text"><strong>Asset #WB123 [Asset Profile]:</strong><br>Generation<br>Pune (validated)</div>
+      </div>
+      <div class="trace-arrow">↓</div>
+      <div class="trace-step">
+        <div class="trace-icon blue">👤</div>
+        <div class="trace-text"><strong>Collection</strong><br>A1055</div>
+      </div>
+      <div class="trace-arrow">↓</div>
+      <div class="trace-step">
+        <div class="trace-icon orange">✈</div>
+        <div class="trace-text"><strong>Transit</strong><br>Singapore</div>
+      </div>
+      <div class="trace-arrow">↓</div>
+      <div class="trace-step">
+        <div class="trace-icon teal">↔</div>
+        <div class="trace-text"><strong>Redistribution</strong></div>
+      </div>
+      <div class="trace-arrow">↓</div>
+      <div class="trace-step">
+        <div class="trace-icon check">✓</div>
+        <div class="trace-text"><strong>Verification</strong><br>(verified resource flow)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="content">
+  <div class="lifecycle-area">
+    <div class="section-label">Lifecycle Data Stream</div>
+
+    <div class="flow-stages">
+
+      <!-- Stage 1: Generation -->
+      <div class="stage">
+        <div class="stage-visual">
+          <div class="qr-badge">QR scanned</div>
+          <div class="stage-emoji">🏠</div>
+          <div class="annot" style="bottom:4px;right:4px;font-size:7px">📦<br>#WB123</div>
+        </div>
+        <div class="stage-label-box s1">01 - Generation</div>
+        <div class="stage-details">
+          <div><span class="check">✔</span> Demand Node: <strong>Pune</strong></div>
+          <div><span class="check">✔</span> Initial Request (07:55)</div>
+          <div><span class="check">✔</span> QR Passport ID: <strong>#WB123-IN</strong></div>
+        </div>
+      </div>
+
+      <!-- Stage 2: Collection -->
+      <div class="stage">
+        <div class="stage-visual">
+          <div class="qr-badge">QR scanned</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div class="stage-emoji">👷</div>
+            <div class="annot" style="position:relative;transform:none;font-size:7px">Dynamic worker<br>scanning</div>
+          </div>
+        </div>
+        <div class="stage-label-box s2">02 - Collection</div>
+        <div class="stage-details">
+          <div><span class="check">✔</span> Supply Agent: <strong>A1055</strong></div>
+          <div><span class="check">✔</span> Validated adoption (Nairobi)</div>
+          <div><span class="check">✔</span> Validated Gig-Worker Pickup &amp; Validation</div>
+        </div>
+      </div>
+
+      <!-- Stage 3: Processing -->
+      <div class="stage">
+        <div class="stage-visual">
+          <div class="qr-badge">QR scanned</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div class="stage-emoji">🏭</div>
+            <div class="annot" style="position:relative;transform:none;font-size:7px">Dijkstra / A*<br>optimization</div>
+          </div>
+        </div>
+        <div class="stage-label-box s3">03 - Processing</div>
+        <div class="stage-details">
+          <div><span class="dot-o">●</span> Regional scale redistribution (Singapore)</div>
+          <div><span class="dot-o">●</span> API marketplace for load balancing</div>
+          <div><span class="dot-o">●</span> Material identity from birth to rebirth</div>
+        </div>
+      </div>
+
+      <!-- Stage 4: Transformation -->
+      <div class="stage">
+        <div class="stage-visual">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="font-size:40px">♻️</div>
+            <div class="annot" style="position:relative;transform:none;font-size:7px">Circular<br>Transform</div>
+          </div>
+        </div>
+        <div class="stage-label-box s4">04 - Transformation</div>
+        <div class="stage-details">
+          <div><span class="dot-b">✔</span> Built-in ESG metrics</div>
+          <div><span class="dot-b">✔</span> Plastic Flake Yield: <strong>85%</strong></div>
+          <div><span class="dot-b">✔</span> Carbon Credit Generated</div>
+        </div>
+      </div>
+
+      <!-- Stage 5: Verified Rebirth -->
+      <div class="stage">
+        <div class="stage-visual">
+          <div class="recycler-visual">
+            <div style="font-size:36px">🏗️</div>
+            <div class="recycler-label">Recycler<br>Hub</div>
+            <div style="font-size:10px;background:#fff3e0;border:1px solid #ffcc80;border-radius:6px;padding:2px 6px;color:#e65100;font-weight:600">Plastic flake</div>
+          </div>
+        </div>
+        <div class="stage-label-box s5">05 - Verified Rebirth</div>
+        <div class="stage-details">
+          <div><span class="dot-y">✔</span> Verified carbon savings &amp; recycling yield</div>
+          <div><span class="dot-y">✔</span> Connection made to Recycler B (Verified)</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- LIVE STATUS -->
+  <div class="live-status">
+    <div class="live-dot"></div>
+    <strong>LIVE STATUS</strong>
+    <span class="status-divider">|</span>
+    Traceability Stream Status: <span class="status-optimized">&nbsp;OPTIMIZED</span>
+    <span class="status-divider">|</span>
+    End-to-end Material Accountability: <strong>100%</strong>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item" onclick="location.href='index.html'">
+    <div class="nav-icon-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      </svg>
+    </div>
+    Home
+  </div>
+  <div class="nav-item" onclick="location.href='page2.html'">
+    <div class="nav-icon-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+    </div>
+    Command Center Portal
+  </div>
+  <div class="nav-item" onclick="location.href='page2.html'">
+    <div class="nav-icon-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+        <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+      </svg>
+    </div>
+    Logistics API
+  </div>
+  <div class="nav-item active">
+    <div class="nav-icon-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+    Traceability
+  </div>
+  <div class="nav-item">
+    <div class="nav-icon-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+      </svg>
+    </div>
+    Configuration
+  </div>
+</div>
+
+</body>
+</html>
